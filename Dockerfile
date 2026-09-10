@@ -31,6 +31,9 @@ RUN PLAYWRIGHT_VERSION=$(node -p "require('/tmp/package.json').dependencies.play
     rm /tmp/package.json
 
 # Smoke-test the bake: fail the build if the browser doesn't actually launch.
-RUN node -e "require('playwright').chromium.launch().then(b => { console.log('playwright ok'); return b.close(); }).catch(e => { console.error(e); process.exit(1); })"
+# NODE_PATH must point at the global node_modules dir here because `playwright`
+# was installed with `npm install -g`, and plain `node -e` (run from
+# /home/agent/workspace) doesn't search the global install location by default.
+RUN NODE_PATH="$(npm root -g)" node -e "require('playwright').chromium.launch().then(b => { console.log('playwright ok'); return b.close(); }).catch(e => { console.error(e); process.exit(1); })"
 
 USER agent
