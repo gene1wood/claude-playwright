@@ -14,6 +14,13 @@ FROM docker/sandbox-templates:claude-code@sha256:68fdd3172a6f64a7f14ffddfb58b0a3
 # compatible with the pinned version installed below.
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
 
+# npm's global prefix (fixed by the base image's npm config, see `npm config
+# get prefix`) isn't on Node's default module search path — only npx/npm add
+# it. Without this, `node -e "require('playwright')"` fails to find the
+# globally-installed package below even though it's right there, which looks
+# identical to Chromium itself being missing.
+ENV NODE_PATH=/usr/local/share/npm-global/lib/node_modules
+
 # Installing OS-level shared-lib deps (fonts, libnss3, libgbm, etc.) needs
 # apt/root, and downloading the browser binary needs network access that
 # is only unrestricted at build time (before the runtime egress policy
@@ -31,9 +38,6 @@ RUN PLAYWRIGHT_VERSION=$(node -p "require('/tmp/package.json').dependencies.play
     rm /tmp/package.json
 
 # Smoke-test the bake: fail the build if the browser doesn't actually launch.
-# NODE_PATH must point at the global node_modules dir here because `playwright`
-# was installed with `npm install -g`, and plain `node -e` (run from
-# /home/agent/workspace) doesn't search the global install location by default.
-RUN NODE_PATH="$(npm root -g)" node -e "require('playwright').chromium.launch().then(b => { console.log('playwright ok'); return b.close(); }).catch(e => { console.error(e); process.exit(1); })"
+RUN node -e "require('playwright').chromium.launch().then(b => { console.log('playwright ok'); return b.close(); }).catch(e => { console.error(e); process.exit(1); })"
 
 USER agent
