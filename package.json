@@ -1,0 +1,8 @@
+{
+  "name": "claude-playwright",
+  "private": true,
+  "description": "Pins the Playwright version baked into the Docker sandbox image so Dependabot can track it.",
+  "dependencies": {
+    "playwright": "1.63.0"
+  }
+}

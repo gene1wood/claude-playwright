@@ -1,0 +1,22 @@
+version: 2
+updates:
+  # Tracks the pinned digest of docker/sandbox-templates:claude-code in the
+  # Dockerfile's FROM line and opens a PR when upstream publishes a new one.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Tracks the exact Playwright version pinned in package.json, which the
+  # Dockerfile reads at build time (Dependabot can't see versions embedded
+  # in RUN commands, only manifest files like this one).
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Keeps the SHA-pinned actions in build.yml current.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
