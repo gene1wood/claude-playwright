@@ -35,9 +35,40 @@ RUN PLAYWRIGHT_VERSION=$(node -p "require('/tmp/package.json').dependencies.play
     npm install -g playwright@${PLAYWRIGHT_VERSION} && \
     npx playwright install --with-deps chromium && \
     chmod -R a+rX /opt/ms-playwright && \
+    pip install --break-system-packages playwright==${PLAYWRIGHT_VERSION} && \
     rm /tmp/package.json
 
-# Smoke-test the bake: fail the build if the browser doesn't actually launch.
-RUN node -e "require('playwright').chromium.launch().then(b => { console.log('playwright ok'); return b.close(); }).catch(e => { console.error(e); process.exit(1); })"
+# Put the browser on PATH so `which chromium` finds it, without Claude
+# needing to know Playwright's cache layout. `find` rather than a hardcoded
+# glob, so a changed directory layout in a future Playwright release fails
+# the build instead of leaving a dead link.
+#
+# /usr/local/bin/chromium is a wrapper, not a bare symlink: run directly as a
+# container user, Chromium needs --no-sandbox, and it needs --headless to start
+# without a display. Playwright's own launches use the real binary and are
+# unaffected. The alias names are what Lighthouse, chrome-launcher, etc. probe.
+RUN CHROME=$(find /opt/ms-playwright -path '*/chrome-linux*/chrome' -type f | head -n1) && \
+    test -n "$CHROME" && \
+    printf '#!/bin/sh\nexec "%s" --headless=new --no-sandbox "$@"\n' "$CHROME" > /usr/local/bin/chromium && \
+    chmod 755 /usr/local/bin/chromium && \
+    ln -s chromium /usr/local/bin/chromium-browser && \
+    ln -s chromium /usr/local/bin/google-chrome && \
+    chromium --version
+
+# For tools that read the browser location from the environment.
+ENV CHROME_BIN=/usr/local/bin/chromium \
+    CHROME_PATH=/usr/local/bin/chromium \
+    PUPPETEER_EXECUTABLE_PATH=/usr/local/bin/chromium
+
+# Tell Claude the browser exists. This goes in Claude Code's managed-policy
+# location, not ~/.claude/CLAUDE.md: the sandbox rewrites files under
+# /home/agent/.claude when it starts, so anything baked in there is lost.
+COPY claude-code-memory.md /etc/claude-code/CLAUDE.md
+RUN chmod 644 /etc/claude-code/CLAUDE.md
+
+# Smoke-test the bake: fail the build if the browser doesn't actually launch
+# from either Node or Python.
+RUN node -e "require('playwright').chromium.launch().then(b => { console.log('playwright ok'); return b.close(); }).catch(e => { console.error(e); process.exit(1); })" && \
+    python3 -c "from playwright.sync_api import sync_playwright as p; c = p().start(); b = c.chromium.launch(); print('playwright python ok'); b.close(); c.stop()"
 
 USER agent

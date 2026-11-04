@@ -15,6 +15,20 @@ sandbox without installing anything at session start.
 - Caches the browser binary at a fixed path (`/opt/ms-playwright`, readable
   by any user) instead of a user home directory, so it's found regardless of
   which user a project's local `playwright` package runs as.
+- Installs a `/usr/local/bin/chromium` wrapper (headless, `--no-sandbox`) with
+  `google-chrome` and `chromium-browser` aliases, and sets `CHROME_BIN`,
+  `CHROME_PATH` and `PUPPETEER_EXECUTABLE_PATH`, so `which chromium` and
+  common tools find the browser.
+- Bakes [`claude-code-memory.md`](claude-code-memory.md) into
+  `/etc/claude-code/CLAUDE.md` (Claude Code's managed-policy location), so
+  Claude is told at session start that a browser exists. It isn't placed in
+  `~/.claude`, because the sandbox rewrites files there at startup.
+- Installs the matching `playwright` Python package system-wide (pinned to
+  the same version as the npm package, so both expect the same browser
+  build). Use the system Python, not a project virtualenv.
+- Node scripts must use `require('playwright')` (CommonJS). `NODE_PATH` makes
+  that work, but ES modules ignore it, so `import('playwright')` fails with
+  `ERR_MODULE_NOT_FOUND`.
 - Smoke-tests that Chromium actually launches as part of the build, so a
   broken image fails CI instead of shipping silently.
 
