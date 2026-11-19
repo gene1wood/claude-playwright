@@ -1,0 +1,4 @@
+# Python Playwright, pinned separately from the npm package in package.json:
+# PyPI and npm patch numbers don't line up (e.g. PyPI 1.65.1 bundles the
+# 1.65.0 driver), so the same version string can need different browsers.
+playwright==1.65.0

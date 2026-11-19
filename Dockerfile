@@ -30,13 +30,20 @@ USER root
 # The version pin lives in package.json (not an ARG) so Dependabot's npm
 # ecosystem can see and bump it — Dependabot only reads FROM lines out of
 # Dockerfiles, not versions embedded in RUN commands.
-COPY package.json /tmp/package.json
+#
+# The Python package is pinned separately in requirements.txt: PyPI and npm
+# patch numbers drift apart (PyPI 1.65.1 bundles the npm 1.65.0 driver), so
+# one shared version string can make the two packages expect different
+# Chromium revisions. Each package then installs its own browser; when their
+# revisions match (the normal case) the second install is a no-op.
+COPY package.json requirements.txt /tmp/
 RUN PLAYWRIGHT_VERSION=$(node -p "require('/tmp/package.json').dependencies.playwright") && \
     npm install -g playwright@${PLAYWRIGHT_VERSION} && \
     npx playwright install --with-deps chromium && \
+    pip install --break-system-packages -r /tmp/requirements.txt && \
+    python3 -m playwright install chromium && \
     chmod -R a+rX /opt/ms-playwright && \
-    pip install --break-system-packages playwright==${PLAYWRIGHT_VERSION} && \
-    rm /tmp/package.json
+    rm /tmp/package.json /tmp/requirements.txt
 
 # Put the browser on PATH so `which chromium` finds it, without Claude
 # needing to know Playwright's cache layout. `find` rather than a hardcoded
@@ -47,7 +54,7 @@ RUN PLAYWRIGHT_VERSION=$(node -p "require('/tmp/package.json').dependencies.play
 # container user, Chromium needs --no-sandbox, and it needs --headless to start
 # without a display. Playwright's own launches use the real binary and are
 # unaffected. The alias names are what Lighthouse, chrome-launcher, etc. probe.
-RUN CHROME=$(find /opt/ms-playwright -path '*/chrome-linux*/chrome' -type f | head -n1) && \
+RUN CHROME=$(find /opt/ms-playwright -path '*/chrome-linux*/chrome' -type f | sort -V | tail -n1) && \
     test -n "$CHROME" && \
     printf '#!/bin/sh\nexec "%s" --headless=new --no-sandbox "$@"\n' "$CHROME" > /usr/local/bin/chromium && \
     chmod 755 /usr/local/bin/chromium && \
