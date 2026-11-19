@@ -15,6 +15,13 @@ updates:
     schedule:
       interval: "weekly"
 
+  # Tracks the Python Playwright pin in requirements.txt. It is separate from
+  # the npm pin because PyPI and npm patch numbers don't line up.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
   # Keeps the SHA-pinned actions in build.yml current.
   - package-ecosystem: "github-actions"
     directory: "/"

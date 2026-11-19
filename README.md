@@ -23,9 +23,12 @@ sandbox without installing anything at session start.
   `/etc/claude-code/CLAUDE.md` (Claude Code's managed-policy location), so
   Claude is told at session start that a browser exists. It isn't placed in
   `~/.claude`, because the sandbox rewrites files there at startup.
-- Installs the matching `playwright` Python package system-wide (pinned to
-  the same version as the npm package, so both expect the same browser
-  build). Use the system Python, not a project virtualenv.
+- Installs the `playwright` Python package system-wide, pinned in
+  [`requirements.txt`](requirements.txt). This pin is kept apart from the npm
+  one in `package.json` because PyPI and npm patch numbers drift (PyPI 1.65.1
+  bundles the npm 1.65.0 driver). Each package installs the Chromium build it
+  expects, which is a no-op when they match. Use the system Python, not a
+  project virtualenv.
 - Node scripts must use `require('playwright')` (CommonJS). `NODE_PATH` makes
   that work, but ES modules ignore it, so `import('playwright')` fails with
   `ERR_MODULE_NOT_FOUND`.
